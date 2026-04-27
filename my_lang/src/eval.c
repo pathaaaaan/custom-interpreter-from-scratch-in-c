@@ -303,9 +303,17 @@ static Value eval_env(Node *node, Environment *env, ObjectTracker *tracker, int 
     return val_nil();
 }
 
-void print_ast(Node *node, int depth) {
+static void print_ast_internal(Node *node, int depth, int *is_last) {
     if (node == NULL) return;
-    for (int i=0; i<depth; i++) printf("  ");
+
+    for (int i = 0; i < depth; i++) {
+        if (i == depth - 1) {
+            printf("%s", is_last[i] ? "└── " : "├── ");
+        } else {
+            printf("%s", is_last[i] ? "    " : "│   ");
+        }
+    }
+
     switch (node->type) {
         case NODE_INT: printf("INT(%d)\n", node->int_val); break;
         case NODE_FLOAT: printf("FLOAT(%g)\n", node->float_val); break;
@@ -328,24 +336,40 @@ void print_ast(Node *node, int depth) {
         case NODE_STR: printf("STR\n"); break;
     }
 
-    print_ast(node->left, depth + 1);
-    print_ast(node->right, depth + 1);
-    print_ast(node->condition, depth + 1);
-    print_ast(node->then_branch, depth + 1);
-    print_ast(node->else_branch, depth + 1);
-    print_ast(node->init, depth + 1);
-    print_ast(node->inc, depth + 1);
+    Node *children[1024];
+    int child_count = 0;
+
+    if (node->left) children[child_count++] = node->left;
+    if (node->right) children[child_count++] = node->right;
+    if (node->condition) children[child_count++] = node->condition;
+    if (node->init) children[child_count++] = node->init;
+    if (node->inc) children[child_count++] = node->inc;
+    
     if (node->type == NODE_CALL) {
-        for(int i=0; i<node->arg_count; i++) print_ast(node->args[i], depth + 1);
+        for(int i = 0; i < node->arg_count; i++) children[child_count++] = node->args[i];
     }
     if (node->type == NODE_DEF || node->type == NODE_WHILE || node->type == NODE_FOR) {
         Node *n = node->body;
-        while(n) {
-            print_ast(n, depth + 1);
-            n = n->next;
+        while(n) { children[child_count++] = n; n = n->next; }
+    }
+    if (node->type == NODE_IF) {
+        Node *n = node->then_branch;
+        while(n) { children[child_count++] = n; n = n->next; }
+        if (node->else_branch) {
+            n = node->else_branch;
+            while(n) { children[child_count++] = n; n = n->next; }
         }
     }
-    if (node->type != NODE_DEF && node->type != NODE_WHILE && node->type != NODE_FOR) {
-        print_ast(node->next, depth); // Only block siblings at same depth
+
+    for (int i = 0; i < child_count; i++) {
+        is_last[depth] = (i == child_count - 1);
+        print_ast_internal(children[i], depth + 1, is_last);
+    }
+}
+
+void print_ast(Node *node, int depth) {
+    if (depth == 0) {
+        int is_last[128] = {0};
+        print_ast_internal(node, 0, is_last);
     }
 }
