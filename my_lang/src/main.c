@@ -46,13 +46,22 @@ static char *read_file(const char *path) {
     return buffer;
 }
 
-static void run_source(const char *source, SymbolTable *table) {
+static void run_source(const char *source, Environment *env, ObjectTracker *tracker, int print_tree) {
     TokenArray tokens;
     Node *program;
 
     tokens = lex_source(source);
     program = parse_tokens(&tokens);
-    eval_program(program, table);
+    if (print_tree) {
+        printf("--- AST ---\n");
+        Node *curr = program;
+        while(curr) {
+            print_ast(curr, 0);
+            curr = curr->next;
+        }
+        printf("-----------\n");
+    }
+    eval_program(program, env, tracker);
     free_ast(program);
     free_tokens(&tokens);
 }
@@ -120,14 +129,16 @@ static int should_continue_input(const char *buffer) {
     return last != ';' && last != '}';
 }
 
-static void repl(void) {
-    SymbolTable table;
+static void repl(int print_tree) {
+    Environment env;
+    ObjectTracker tracker;
     char line[1024];
     char *buffer = NULL;
     size_t length = 0;
     size_t capacity = 0;
 
-    init_table(&table);
+    init_env(&env, NULL);
+    init_tracker(&tracker);
 
     while (1) {
         printf("%s", length == 0 ? ">>> " : "... ");
@@ -145,32 +156,42 @@ static void repl(void) {
             continue;
         }
 
-        run_source(buffer, &table);
+        run_source(buffer, &env, &tracker, print_tree);
         buffer[0] = '\0';
         length = 0;
     }
 
     free(buffer);
-    free_table(&table);
+    free_env(&env);
+    free_tracker(&tracker);
 }
 
 int main(int argc, char **argv) {
-    if (argc > 2) {
-        fprintf(stderr, "Usage: %s [file]\n", argv[0]);
-        return EXIT_FAILURE;
+    int print_tree = 0;
+    int file_idx = -1;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--ast") == 0) {
+            print_tree = 1;
+        } else {
+            file_idx = i;
+        }
     }
 
-    if (argc == 2) {
-        SymbolTable table;
-        char *source = read_file(argv[1]);
+    if (file_idx != -1) {
+        Environment env;
+        ObjectTracker tracker;
+        char *source = read_file(argv[file_idx]);
 
-        init_table(&table);
-        run_source(source, &table);
+        init_env(&env, NULL);
+        init_tracker(&tracker);
+        run_source(source, &env, &tracker, print_tree);
         free(source);
-        free_table(&table);
+        free_env(&env);
+        free_tracker(&tracker);
         return EXIT_SUCCESS;
     }
 
-    repl();
+    repl(print_tree);
     return EXIT_SUCCESS;
 }

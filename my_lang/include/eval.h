@@ -2,9 +2,11 @@
 #define EVAL_H
 
 #include "common.h"
+#include "value.h"
 #include "table.h"
 
-int eval(Node *node, SymbolTable *table);
-void eval_program(Node *program, SymbolTable *table);
+Value eval(Node *node, Environment *env, ObjectTracker *tracker);
+void eval_program(Node *program, Environment *env, ObjectTracker *tracker);
+void print_ast(Node *node, int depth);
 
 #endif

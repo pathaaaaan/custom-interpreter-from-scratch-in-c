@@ -2,21 +2,23 @@
 #define TABLE_H
 
 #include <stddef.h>
+#include "value.h"
 
 typedef struct {
     char *name;
-    int value;
+    Value value;
 } Symbol;
 
-typedef struct {
+typedef struct Environment {
     Symbol *items;
     size_t count;
     size_t capacity;
-} SymbolTable;
+    struct Environment *enclosing;
+} Environment;
 
-void init_table(SymbolTable *table);
-void free_table(SymbolTable *table);
-void set_variable(SymbolTable *table, const char *name, int value);
-int get_variable(const SymbolTable *table, const char *name, int *out_value);
+void init_env(Environment *env, Environment *enclosing);
+void free_env(Environment *env);
+void set_variable(Environment *env, const char *name, Value value);
+int get_variable(const Environment *env, const char *name, Value *out_value);
 
 #endif

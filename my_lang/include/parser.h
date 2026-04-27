@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-Node *parse_tokens(const TokenArray *tokens);
+Node *parse_tokens(const TokenArray *tokens); // builds an AST from the tokens
 void free_ast(Node *node);
 
 #endif
